@@ -501,6 +501,47 @@ describe('LocalAgentExecutor', () => {
       expect(agentRegistry.getTool(subAgentName)).toBeUndefined();
     });
 
+    it('should correctly register unqualified MCP tools when toolConfig is undefined', async () => {
+      const serverName = 'mcp-server-auto';
+      const toolName = 'mcp-tool-auto';
+      const qualifiedName = `${serverName}${MCP_QUALIFIED_NAME_SEPARATOR}${toolName}`;
+
+      const mockMcpTool = {
+        tool: vi.fn(),
+        callTool: vi.fn(),
+      } as unknown as CallableTool;
+
+      const mcpTool = new DiscoveredMCPTool(
+        mockMcpTool,
+        serverName,
+        toolName,
+        'description',
+        {},
+        mockConfig.getMessageBus(),
+      );
+
+      // Register the unqualified MCP tool in the parent registry.
+      // This is the default registration for MCP tools unless `asFullyQualifiedTool` is used.
+      parentToolRegistry.registerTool(mcpTool);
+
+      // Create definition and force toolConfig to be undefined
+      const definition = createTestDefinition();
+      definition.toolConfig = undefined;
+
+      const executor = await LocalAgentExecutor.create(
+        definition,
+        mockConfig,
+        onActivity,
+      );
+
+      const agentRegistry = executor['toolRegistry'];
+
+      // Expect the tool to be registered by its fully qualified name in the agent's registry
+      expect(agentRegistry.getTool(qualifiedName)).toBeDefined();
+      // Ensure the unqualified name is NOT present (as it would have caused the error before)
+      expect(agentRegistry.getTool(toolName)).toBeUndefined();
+    });
+
     it('should enforce qualified names for MCP tools in agent definitions', async () => {
       const serverName = 'mcp-server';
       const toolName = 'mcp-tool';

@@ -171,7 +171,16 @@ export class LocalAgentExecutor<TOutput extends z.ZodTypeAny> {
     } else {
       // If no tools are explicitly configured, default to all available tools.
       for (const toolName of parentToolRegistry.getAllToolNames()) {
-        registerToolByName(toolName);
+        const tool = parentToolRegistry.getTool(toolName);
+        if (tool instanceof DiscoveredMCPTool) {
+          // If it's an MCP tool, directly register its fully qualified version
+          // with the agent's isolated registry. This bypasses the `registerToolByName`
+          // guard which expects already qualified names for MCP tools.
+          agentToolRegistry.registerTool(tool.asFullyQualifiedTool());
+        } else {
+          // For non-MCP tools, or if tool is null/undefined, use registerToolByName
+          registerToolByName(toolName);
+        }
       }
     }
 
